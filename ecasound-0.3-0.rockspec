@@ -1,27 +1,28 @@
 -- This file was automatically generated for the LuaDist project.
 
 package = "ecasound"
-version = "0.2-0"
+version = "0.3-0"
 -- LuaDist source
 source = {
-  tag = "0.2-0",
+  tag = "0.3-0",
   url = "git://github.com/LuaDist-testing/ecasound.git"
 }
 -- Original source
 -- source = {
---    url = "http://www.pjb.com.au/comp/lua/ecasound-0.2.tar.gz",
---    md5 = "6ff5031ba5e2970a735f15251e17f5c4"
+--    url = "http://www.pjb.com.au/comp/lua/ecasound-0.3.tar.gz",
+--    md5 = "030783463294f70144bca0c45d4f5a32"
 -- }
 description = {
    summary = "Provides access to the ecasound interactive mode",
    detailed = [[
-		See 'man ecasound iam' and the Audio::Ecasound Perl CPAN module
+See 'man ecasound iam' and the Audio::Ecasound Perl CPAN module
    ]],
    homepage = "http://www.pjb.com.au/comp/lua/ecasound.html",
    license = "MIT/X11"
 }
 dependencies = {
-   "lua >= 5.1, <5.4"
+   "lua >= 5.1, <5.4",
+   "luaposix >= 31",
 }
 external_dependencies = {
    ECAS = {

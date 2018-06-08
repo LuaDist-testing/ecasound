@@ -63,16 +63,16 @@ if not os.getenv("ECASOUND") then P.setenv("ECASOUND", e) end
 
 -- Constructing and destructing
 function M.eci_init()
-	prv.eci_init()
+	return(prv.eci_init())
 end
 function M.eci_ready()
-	prv.eci_ready()
+	return(prv.eci_ready())  -- returns an integer; does that mean boolean ?
 end
 function M.eci_cleanup()
-	prv.eci_cleanup()
+	return(prv.eci_cleanup())
 end
 
--- The Do-Everything Workhorse function
+-- The Do-Everything Workhorse-Function
 function M.eci(str, float)
 	if type(str) ~= 'string' then
 		die("M.eci: str was "..tostring(str))
@@ -80,6 +80,9 @@ function M.eci(str, float)
 	if float and type(float) ~= 'number' then
 		die("M.eci: 2nd arg was a "..type(float)..", should be a number")
 	end
+	-- should test if string.find(str,'-is-') then return a boolean !
+	--  c-is-bypassed c-is-muted cop-is-bypassed cs-is-valid
+	if string.find(str,'-is-') then return prv.eci(str) > 0.5 end
 	return prv.eci(str, float)
 end
 
@@ -114,20 +117,25 @@ ecasound.lua - Provides access to the ecasound interactive mode
 
  local E = require 'ecasound'
  E.eci_init()
+ local commands = E.eci("int-cmd-list")    -- an array
  E.eci("cs-add play_chainsetup")
  E.eci("c-add 1st_chain")
  E.eci("ai-add /tmp/t.wav")
  E.eci("ao-add /dev/dsp")
- E.eci("cop-add -efl:100")  -- add a chain operator
+ E.eci("cop-add -efl:100")     -- add a chain operator
  E.eci("cop-select 1")
- E.eci("copp-select 1")  -- parameter 1 means the 100Hz
+ E.eci("copp-select 1") -- parameter 1 means the 100Hz
  print("aio-status = "..E.eci("aio-status"))
  E.eci("start")
+ local freq_ratio = 1.2
  while (true) do
      os.execute("sleep 1")
      if E.eci("engine-status") ~= "running" then break end
      if E.eci("get-position") > 150 then break end
-     E.eci("copp-set", 100+E.eci("copp-get"))   -- optional float argument
+     local freq = E.eci("copp-get")
+     if freq < 80 then break end
+     if freq > 10000 then freq_ratio = 0.8333 end
+     E.eci("copp-set", freq_ratio*freq) -- extra float argument
  end
  E.eci("stop")
  E.eci_cleanup()
@@ -139,13 +147,13 @@ C</usr/include/libecasoundc/ecasoundc.h>, except
 B<1)> instead of eci_command() it is abbreviated to eci(),
 and
 B<2)> those functions concerned with the return-types and return-values
-are not offered, all this being handled internally by
-C<eci("command string")>, which returns a Lua string,
-or array of strings, or number, according to the command given.
+are not offered, since all that is handled internally by
+C<eci("commandstring")>, which returns a Lua string,
+or array of strings, or a number, according to the command given.
 
-Errors are reported by returning B<nil, 'error-string'>
+C<eci()> reports errors by returning B<nil, 'error-string'>
 as is needed by the Lua B<assert()> function.
-Therefore, commands in the C library which really do return nothing,
+Therefore, commands in the C library which really I<do> return nothing,
 here in C<ecasound.lua> return not C<nil>, but a zero-length string.
 
 =head2 FUNCTIONS
@@ -168,7 +176,7 @@ returns nothing
 
 =back
 
-=head3 The Do-Everything Workhorse function
+=head3 The Do-Everything Workhorse-Function
 
 =over 3
 
@@ -179,8 +187,20 @@ returns nothing
 There are about 200 available commands, see ECI COMMANDS below.
 
 Some commands need a number as an argument,
-and this should go as a second argument
-as in the second example (eg: C<eci("copp-set", next_cutoff)>)
+and this should go as a second argument,
+as in the second example (eg: C<eci("copp-set", 2800)>)
+
+The return value has its natural Lua datatype,
+either a string, an array of strings, a number, a boolean, or C<nil>.
+If the commandstring contains '-is-' then the return value is a boolean,
+not the integer as returned by the C library;
+this affects C<c-is-bypassed>, C<c-is-muted>, C<cop-is-bypassed>
+and C<cs-is-valid>.
+
+C<eci()> reports errors by returning B<nil, 'error-string'>
+as is needed by the Lua B<assert()> function.
+Therefore, commands in the C library which really do return nothing,
+here in C<ecasound.lua> return not C<nil>, but a zero-length string.
 
 =back
 
@@ -201,6 +221,38 @@ Moves the I<ecasound> engine on to the next event; returns nothing.
 Returns a string.
 
 =back
+
+=head2 DOWNLOAD
+
+This module is available on
+https://luarocks.org/
+so you should be able to install it with
+
+  luarocks install ecasound
+
+or:
+
+  luarocks install http://www.pjb.com.au/comp/lua/ecasound-0.3-0.rockspec
+
+If this results in an error message such as:
+
+  Error: Could not find expected file libecasound.a, or libecasound.so,
+  or libecasound.so.* for ecasound -- you may have to install ecasound in
+  your system and/or pass ECAS_DIR or ECAS_LIBDIR to the luarocks command.
+  Example: luarocks install ecasound ECAS_DIR=/usr/local
+
+then you need to find the appropriate directory with:
+
+  find /usr/lib -name 'libecasound.*' -print
+  find /usr/local/lib -name 'libecasound.*' -print
+
+and then invoke:
+
+  luarocks install \
+  http://www.pjb.com.au/comp/lua/ecasound-0.3-0.rockspec \
+  ECAS_LIBDIR=/usr/lib/i386-linux-gnu/   # or wherever
+
+accordingly. 
 
 =head2 ECI COMMANDS
 
@@ -415,37 +467,11 @@ t>
 
 =back
 
-=head2 DOWNLOAD
+=head2 CHANGES
 
-This module is available on
-https://luarocks.org/
-so you should be able to install it with
-
-C<luarocks install ecasound>
-
-or:
-
-C<luarocks install http://www.pjb.com.au/comp/lua/ecasound-0.2-0.rockspec>
-
-If this results in an error message such as:
-
-  Error: Could not find expected file libecasound.a, or libecasound.so,
-  or libecasound.so.* for ecasound -- you may have to install ecasound in
-  your system and/or pass ECAS_DIR or ECAS_LIBDIR to the luarocks command.
-  Example: luarocks install ecasound ECAS_DIR=/usr/local
-
-then you need to find the appropriate directory with:
-
-  find /usr/lib -name 'libecasound.*' -print
-  find /usr/local/lib -name 'libecasound.*' -print
-
-and then invoke:
-
-  luarocks install \
-  http://www.pjb.com.au/comp/lua/ecasound-0.2-0.rockspec \
-  ECAS_LIBDIR=/usr/lib/i386-linux-gnu/ # or wherever
-
-accordingly. 
+ 20170131  0.3  the eci commands containing '-is-' return boolean
+ 20170129  0.2  first working version
+ 20170129  0.1  placeholder only
 
 =head2 AUTHOR
 
@@ -455,14 +481,14 @@ Peter J Billam, http://www.pjb.com.au/comp/contact.html
 
  apt-get install ecasound-doc libecasoundc-dev
  man ecasound-iam
+ man ecasound
  https://sourceforge.net/p/ecasound/mailman/
+ http://www.pjb.com.au/comp/lua/ecasound.html
  http://search.cpan.org/perldoc?Audio::Ecasound
  http://www.eca.cx/ecasound/
- http://www.pjb.com.au/comp/lua/ecasound.html
  https://luarocks.org/modules/peterbillam
  https://luarocks.org/
  http://www.pjb.com.au/
-
 
 =cut
 

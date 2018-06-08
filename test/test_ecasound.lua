@@ -27,20 +27,36 @@ local iarg=1; while arg[iarg] ~= nil do
 	iarg = iarg+1
 end
 
-local E = require("ecasound")
-E.eci_init()
---  for k,v in pairs(E) do print(k) end
+local Test = 31 ; local i_test = 0; local Failed = 0;
+function ok(b,s)
+	i_test = i_test + 1
+	if b then
+		io.write('ok '..i_test..' - '..s.."\n")
+	else
+		io.write('not ok '..i_test..' - '..s.."\n")
+		Failed = Failed + 1
+	end
+	return b
+end
 
-print('about to int_cmd_list')
+
+local E = require("ecasound")
+local rv = E.eci_init()
+ok(rv == '', "eci('ai-init') returned the empty string")
+--  print(type(rv)) ; print('rv =',rv)
+
 local cmd_list = E.eci("int-cmd-list")
 -- for i,v in ipairs(cmd_list) do print(v) end
--- os.execute('sleep 1')
-print('about to cs-add play_chainsetup and cs-select play_chainsetup')
-E.eci("cs-add play_chainsetup") 
-E.eci("cs-select play_chainsetup") 
-print('about to c-add and c-select')
-E.eci("c-add 1st_chain")
-E.eci("c-select 1st_chain")
+ok(#cmd_list > 190, 'E.eci("int-cmd-list") returns more than 190 commands')
+rv = E.eci("cs-add play_chainsetup") 
+ok(rv == '', 'eci("cs-add play_chainsetup") returned the empty string')
+rv = E.eci("cs-select play_chainsetup") 
+ok(rv == '', 'eci("cs-select play_chainsetup") returned the empty string')
+rv = E.eci("c-add 1st_chain")
+ok(rv == '', 'eci("cs-add 1st_chain") returned the empty string')
+-- rv = E.eci("c-add 2nd_chain")
+rv = E.eci("c-select 1st_chain")
+ok(rv == '', 'eci("cs-select 1st_chain") returned the empty string')
 
 --  print('about to -i')
 --  assert(E.eci("-i:/tmp/t.wav"))
@@ -51,53 +67,74 @@ E.eci("c-select 1st_chain")
 --  print('about to -o')
 --  assert(E.eci("-o:/tmp/u.wav"))
 -- pjb: so where does the 0.00000000000000 come from ?
-print('about to ai-add and ai-select')
-E.eci("ai-add /tmp/t.wav")
-E.eci("ai-select 1")
-print('about to ao-add and ao-select')
-E.eci("ao-add alsa,0,3,1")   --  Device busy :-(
--- E.eci("ao-add jack,system,out")
--- E.eci("ao-add /dev/dsp")
-E.eci("ao-select 1")
-
--- E.eci("cop-add -efl:100")
--- E.eci("cop-select 1")
---   local cops = E.eci("cop-list")
---   for i,v in ipairs(cops) do print(v) end
--- local num_selected = E.eci("cop-selected")
--- print("num_selected = ", num_selected)
-E.eci("copp-select 1")
-print("copp_selected = ", E.eci("copp-selected"))
-print("engine_status = ", E.eci("engine-status"))
--- https://sourceforge.net/p/ecasound/mailman/ecasound-list/thread/515B8B7B.70302%40netscape.net/#msg30674653
--- if you ask cs-is-valid, and Ecasound returns 0,
--- then it means that cs-connect will *not* work.
-print("ai-list = ") ; for i,v in ipairs(E.eci("ai-list")) do print(v) end
-print("ao-list = ") ; for i,v in ipairs(E.eci("ao-list")) do print(v) end
-print("aio-status = "..E.eci("aio-status"))
---print("ao-status = "..E.eci("ao-status"))
-print("c-list = ") ; for i,v in ipairs(E.eci("c-list")) do print(v) end
-print("cs-is-valid = "..E.eci("cs-is-valid"))
-print("cs-status = "..E.eci("cs-status"))
-E.eci("cs-connect")
-
-if E.eci("cs-is-valid") > 0.5 then
-	print('about to start')
-	assert(E.eci('start'))
-	-- assert(E.eci("engine-launch"))
-	print("engine_status = ", E.eci("engine-status"))  -- stopped? WHY?
-	print("get-position = "..E.eci("get-position"))
-	local cutoff_inc = 5000.0
-	while (true) do
-		print("engine_status = ", E.eci("engine-status"))
-		os.execute('sleep 10')
-		print("get-position = "..E.eci("get-position"))
-		if E.eci("engine-status") ~= "running" then break end
-	end
+rv,es = io.open('/tmp/t.wav', 'r')
+if not rv then
+	print(es)
+	print('You need to copy some .wav file (>4sec) to /tmp/t.wav')
+	os.exit(1)
 end
-print("engine_status = ", E.eci("engine-status"))
-print('about to eci_cleanup')
-E.eci_cleanup()
+rv = E.eci("ai-add /tmp/t.wav")
+ok(rv == '', "eci('ai-add /tmp/t.wav') returned the empty string")
+rv = E.eci("ai-select 1")
+ok(rv == '', 'eci("ai-select 1") returned the empty string')
+-- E.eci("ao-add alsa,0,3,1")   --  Device busy :-(
+-- E.eci("ao-add jack,system,out")
+rv = E.eci("ao-add /dev/dsp")
+ok(rv == '', "eci('ao-add /dev/dsp') returned the empty string")
+rv = E.eci("ao-select 1")
+ok(rv == '', 'eci("ao-select /dev/dsp") returned the empty string')
+
+rv = E.eci("cop-add -efl:100")
+ok(rv == '', "eci('cop-add -efl:100') returned the empty string")
+rv = E.eci("cop-select 1")
+ok(rv == '', 'eci("cop-select 1") returned the empty string')
+--   for i,v in ipairs(E.eci("cop-list")) do print(v) end
+local num_selected = E.eci("cop-selected")
+ok(num_selected == 1, 'num_selected was 1')
+rv = E.eci("copp-select 1")
+ok(rv == '', 'eci("copp-select 1") returned the empty string')
+rv = E.eci("copp-selected")
+ok(rv == 1, 'copp-selected was 1')
+rv = E.eci("engine-status")
+ok(rv == 'not started', 'engine-status was '..tostring(rv))
+-- https://sourceforge.net/p/ecasound/mailman/ecasound-list/thread/515B8B7B.70302%40netscape.net/#msg30674653
+rv = E.eci("aio-status")
+print("aio-status = "..rv)
+rv = E.eci("c-list")
+ok(#rv == 1, "c-list contains just one chain") ;
+ok(rv[1] == '1st_chain', "1st item in c-list is '1st_chain'") ;
+-- for i,v in ipairs(rv) do print(i, v) end
+
+print("cs-status = "..E.eci("cs-status"))
+rv = E.eci("cs-is-valid")
+ok(rv == true, 'eci("cs-is-valid") returned true')
+rv,es = E.eci("cs-connect")
+ok(rv == '', 'eci("connect") returned the empty string')
+
+rv,es = (E.eci("start"))
+ok(rv == '', 'eci("start") returned the empty string')
+-- assert(E.eci("engine-launch"))
+-- print("engine_status = ", E.eci("engine-status")) -- stopped? WHY? too soon?
+rv = E.eci("get-position")
+ok(rv < 0.5, 'eci("get-position") returned zero')
+local freq_ratio = 1.2
+while (true) do
+	os.execute("sleep 1")
+	rv = E.eci("engine-status")
+	ok(rv == 'running', 'eci("engine-status") returned "running"')
+	if rv ~= "running" then break end
+	if E.eci("get-position") > 3.5 then break end
+	local freq = E.eci("copp-get")
+	if freq < 80 then break end
+	if freq > 10000 then freq_ratio = 0.8333 end
+	rv = E.eci("copp-set", freq_ratio*freq)   -- optional float argument
+	ok(rv == '', 'eci("copp-set") returned the empty string')
+end
+rv = E.eci("stop")
+ok(rv == '', 'eci("stop") returned the empty string')
+rv = E.eci_cleanup()
+ok(rv == '', 'eci_cleanup() returned the empty string')
+if Failed > 0.5 then print('Failed '..tostring(Failed)..' tests') end
 
 --[=[
 

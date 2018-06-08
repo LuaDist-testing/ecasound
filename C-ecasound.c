@@ -27,6 +27,7 @@ static int c_eci_init(lua_State *L) {
 		fprintf( stderr, "init Error: %s\n", err );
 		exit(EXIT_FAILURE);
 	}
+	lua_pushstring(L, "");
 	return 1;
 }
 static int c_eci_ready(lua_State *L) {
@@ -36,7 +37,7 @@ static int c_eci_ready(lua_State *L) {
 }
 static int c_eci_cleanup(lua_State *L) {
 	eci_cleanup();
-	lua_pushnil(L);
+	lua_pushstring(L, "");
 	return 1;
 }
 
@@ -63,11 +64,13 @@ static int c_eci(lua_State *L) {
 		directly follow the label. */
 		lua_newtable(L);  /* the result table is now top of stack */
 		int n = eci_last_string_list_count();
-		fprintf( stderr, "eci_last_string_list_count: %d\n", n );
+/* fprintf( stderr, "eci_last_string_list_count: %d\n", n ); */
 		int i = 1;
 		while (i<=n) {
-			lua_pushnumber(L, i);
-			lua_pushstring(L, eci_last_string_list_item(i));
+			lua_pushnumber(L, i);   /* Lua indexes from 1 */
+			lua_pushstring(L, eci_last_string_list_item(i-1)); /* C from 0 */
+/* fprintf( stderr, "eci_last_string_item: %s\n",
+   eci_last_string_list_item(i) ); */
 			lua_settable(L, -3);  /* don't understand this */
 			i = i+1;
 		}
