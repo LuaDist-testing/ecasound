@@ -12,58 +12,188 @@
 
 
 <ul id="index">
-  <li><a href="#NAME">NAME</a></li>
-  <li><a href="#SYNOPSIS">SYNOPSIS</a></li>
-  <li><a href="#DESCRIPTION">DESCRIPTION</a></li>
-  <li><a href="#FUNCTIONS">FUNCTIONS</a></li>
-  <li><a href="#DOWNLOAD">DOWNLOAD</a></li>
-  <li><a href="#AUTHOR">AUTHOR</a></li>
-  <li><a href="#SEE-ALSO">SEE ALSO</a></li>
+  <li>
+    <ul>
+      <li><a href="#NAME">NAME</a></li>
+      <li><a href="#SYNOPSIS">SYNOPSIS</a></li>
+      <li><a href="#DESCRIPTION">DESCRIPTION</a></li>
+      <li><a href="#FUNCTIONS">FUNCTIONS</a>
+        <ul>
+          <li><a href="#Constructing-and-destructing">Constructing and destructing</a></li>
+          <li><a href="#The-Do-Everything-Workhorse-function">The Do-Everything Workhorse function</a></li>
+          <li><a href="#Events">Events</a></li>
+        </ul>
+      </li>
+      <li><a href="#ECI-COMMANDS">ECI COMMANDS</a></li>
+      <li><a href="#DOWNLOAD">DOWNLOAD</a></li>
+      <li><a href="#AUTHOR">AUTHOR</a></li>
+      <li><a href="#SEE-ALSO">SEE ALSO</a></li>
+    </ul>
+  </li>
 </ul>
 
-<h1 id="NAME">NAME</h1>
+<h2 id="NAME">NAME</h2>
 
-<p>ecasound.lua - does whatever</p>
+<p>ecasound.lua - Provides access to the ecasound interactive mode</p>
 
-<h1 id="SYNOPSIS">SYNOPSIS</h1>
+<h2 id="SYNOPSIS">SYNOPSIS</h2>
 
 <pre><code> local E = require &#39;ecasound&#39;
- a = { 6,8,7,9,8 }
- b = { 4,7,5,4,5,6,4 }
- local probability_of_hypothesis_being_wrong = E.ttest(a,b,&#39;b&gt;a&#39;)</code></pre>
+ E.eci_init()
+ E.eci(&quot;cs-add play_chainsetup&quot;)
+ E.eci(&quot;c-add 1st_chain&quot;)
+ E.eci(&quot;ai-add /tmp/t.wav&quot;)
+ E.eci(&quot;ao-add /dev/dsp&quot;)
+ E.eci(&quot;cop-add -efl:100&quot;)  -- add a chain operator
+ E.eci(&quot;cop-select 1&quot;)
+ E.eci(&quot;copp-select 1&quot;)  -- parameter 1 means the 100Hz
+ print(&quot;aio-status = &quot;..E.eci(&quot;aio-status&quot;))
+ E.eci(&quot;start&quot;)
+ while (true) do
+     os.execute(&quot;sleep 1&quot;)
+     if E.eci(&quot;engine-status&quot;) ~= &quot;running&quot; then break end
+     if E.eci(&quot;get-position&quot;) &gt; 150 then break end
+     E.eci(&quot;copp-set&quot;, 100+E.eci(&quot;copp-get&quot;))   -- optional float argument
+ end
+ E.eci(&quot;stop&quot;)
+ E.eci_cleanup()</code></pre>
 
-<h1 id="DESCRIPTION">DESCRIPTION</h1>
+<h2 id="DESCRIPTION">DESCRIPTION</h2>
 
-<p>This module does whatever</p>
+<p>This module offers in Lua most of the functions defined in eg: <code>/usr/include/libecasoundc/ecasoundc.h</code>, except <b>1)</b> instead of eci_command() it is abbreviated to eci(), and <b>2)</b> those functions concerned with the return-types and return-values are not offered, all this being handled internally by <code>eci(&quot;command string&quot;)</code>, which returns a Lua string, or array of strings, or number, according to the command given.</p>
 
-<h1 id="FUNCTIONS">FUNCTIONS</h1>
+<p>Errors are reported by returning <b>nil, &#39;error-string&#39;</b> as is needed by the Lua <b>assert()</b> function. Therefore, commands in the C library which really do return nothing, here in <code>ecasound.lua</code> return not <code>nil</code>, but a zero-length string.</p>
+
+<h2 id="FUNCTIONS">FUNCTIONS</h2>
+
+<h3 id="Constructing-and-destructing">Constructing and destructing</h3>
 
 <dl>
 
-<dt id="ttest-a-b-hypothesis"><i>ttest(a,b, hypothesis)</i></dt>
+<dt id="eci_init"><i>eci_init()</i></dt>
 <dd>
 
-<p>The arguments <i>a</i> and <i>b</i> are arrays of numbers</p>
+<p>returns nothing</p>
 
-<p>The <i>hypothesis</i> can be one of &#39;a&gt;b&#39;, &#39;a&lt;b&#39;, &#39;b&gt;a&#39;, &#39;b&lt;a&#39;, &#39;a~=b&#39; or &#39;a&lt;b&#39;.</p>
+</dd>
+<dt id="eci_ready"><i>eci_ready()</i></dt>
+<dd>
 
-<p><i>ttest</i> returns the probability of your hypothesis being wrong.</p>
+<p>returns an integer</p>
+
+</dd>
+<dt id="eci_cleanup"><i>eci_cleanup()</i></dt>
+<dd>
+
+<p>returns nothing</p>
 
 </dd>
 </dl>
 
-<h1 id="DOWNLOAD">DOWNLOAD</h1>
+<h3 id="The-Do-Everything-Workhorse-function">The Do-Everything Workhorse function</h3>
 
-<p>This module is available at http://www.pjb.com.au/comp/lua/ecasound.html</p>
+<dl>
 
-<h1 id="AUTHOR">AUTHOR</h1>
+<dt id="eci-commandstring"><i>eci(&quot;commandstring&quot;)</i></dt>
+<dd>
+
+</dd>
+<dt id="eci-commandstring-987.654"><i>eci(&quot;commandstring&quot;, 987.654)</i></dt>
+<dd>
+
+<p>There are about 200 available commands, see ECI COMMANDS below.</p>
+
+<p>Some commands need a number as an argument, and this should go as a second argument as in the second example (eg: <code>eci(&quot;copp-set&quot;, next_cutoff)</code>)</p>
+
+</dd>
+</dl>
+
+<h3 id="Events">Events</h3>
+
+<dl>
+
+<dt id="eci_events_available"><i>eci_events_available()</i></dt>
+<dd>
+
+<p>Returns an integer, the number of events available.</p>
+
+</dd>
+<dt id="eci_next_event"><i>eci_next_event()</i></dt>
+<dd>
+
+<p>Moves the <i>ecasound</i> engine on to the next event; returns nothing.</p>
+
+</dd>
+<dt id="eci_current_event"><i>eci_current_event()</i></dt>
+<dd>
+
+<p>Returns a string.</p>
+
+</dd>
+</dl>
+
+<h2 id="ECI-COMMANDS">ECI COMMANDS</h2>
+
+<p>See <code>man ecasound-iam</code></p>
+
+<p>This is a list of the ECI commands offered by my system (debian stable):</p>
+
+<ul>
+
+<p><code>ai-add ai-attach ai-describe ai-forward ai-get-format ai-get-length ai-get-length-samples ai-get-position ai-get-position-samples ai-getpos ai-index-select ai-iselect ai-list ai-remove ai-rewind ai-select ai-selected ai-set-position ai-set-position-samples ai-setpos ai-status ai-wave-edit aio-register aio-status ao-add ao-add-default ao-attach ao-describe ao-forward ao-get-format ao-get-length ao-get-length-samples ao-get-position ao-get-position-samples ao-getpos ao-index-select ao-iselect ao-list ao-remove ao-rewind ao-select ao-selected ao-set-position ao-set-position-samples ao-setpos ao-status ao-wave-edit</code></p>
+
+<p><code>c-add c-bypass c-clear c-deselect c-index-select c-is-bypassed c-is-muted c-iselect c-list c-mute c-muting c-remove c-rename c-select c-select-add c-select-all c-selected c-status cop-add cop-bypass cop-describe cop-get cop-index-select cop-is-bypassed cop-iselect cop-list cop-register cop-remove cop-select cop-selected cop-set cop-status copp-get copp-index-select copp-iselect copp-list copp-select copp-selected copp-set</code></p>
+
+<p><code>cs cs-add cs-connect cs-connected cs-disconnect cs-edit cs-forward cs-get-length cs-get-length-samples cs-get-position cs-get-position-samples cs-getpos cs-index-select cs-is-valid cs-iselect cs-list cs-load cs-option cs-remove cs-rewind cs-save cs-save-as cs-select cs-selected cs-set-audio-format cs-set-length cs-set-length-samples cs-set-param cs-set-position cs-set-position-samples cs-setpos cs-status cs-toggle-loop</code></p>
+
+<p><code>ctrl-add ctrl-describe ctrl-get-target ctrl-index-select ctrl-iselect ctrl-list ctrl-register ctrl-remove ctrl-select ctrl-selected ctrl-status ctrlp-get ctrlp-list ctrlp-select ctrlp-selected ctrlp-set debug dump-ai-length dump-ai-open-state dump-ai-position dump-ai-selected dump-ao-length dump-ao-open-state dump-ao-position dump-ao-selected dump-c-selected dump-cop-value dump-cs-status dump-length dump-position dump-status dump-target engine-halt engine-launch engine-status es forward fs fw get-length get-position getpos h help int-cmd-list int-log-history int-output-mode-wellformed int-set-float-to-string-precision int-set-log-history-length int-version-lib-age int-version-lib-current int-version-lib-revision int-version-string jack-connect jack-disconnect jack-list-connections ladspa-register lv2-register map-cop-list map-ctrl-list map-ladspa-id-list map-ladspa-list map-lv2-list map-preset-list preset-register q quit resource-file rewind run rw s set-position setpos st start status stop stop-sync t</code></p>
+
+</ul>
+
+<h2 id="DOWNLOAD">DOWNLOAD</h2>
+
+<p>This module is available on https://luarocks.org/ so you should be able to install it with</p>
+
+<p><code>luarocks install ecasound</code></p>
+
+<p>or:</p>
+
+<p><code>luarocks install http://www.pjb.com.au/comp/lua/ecasound-0.2-0.rockspec</code></p>
+
+<p>If this results in an error message such as:</p>
+
+<pre><code>  Error: Could not find expected file libecasound.a, or libecasound.so,
+  or libecasound.so.* for ecasound -- you may have to install ecasound in
+  your system and/or pass ECAS_DIR or ECAS_LIBDIR to the luarocks command.
+  Example: luarocks install ecasound ECAS_DIR=/usr/local</code></pre>
+
+<p>then you need to find the appropriate directory with:</p>
+
+<pre><code>  find /usr/lib -name &#39;libecasound.*&#39; -print
+  find /usr/local/lib -name &#39;libecasound.*&#39; -print</code></pre>
+
+<p>and then invoke:</p>
+
+<pre><code>  luarocks install \
+  http://www.pjb.com.au/comp/lua/ecasound-0.2-0.rockspec \
+  ECAS_LIBDIR=/usr/lib/i386-linux-gnu/ # or wherever</code></pre>
+
+<p>accordingly.</p>
+
+<h2 id="AUTHOR">AUTHOR</h2>
 
 <p>Peter J Billam, http://www.pjb.com.au/comp/contact.html</p>
 
-<h1 id="SEE-ALSO">SEE ALSO</h1>
+<h2 id="SEE-ALSO">SEE ALSO</h2>
 
-<pre><code> apg-get install ecasound-doc libecasoundc-dev
+<pre><code> apt-get install ecasound-doc libecasoundc-dev
  man ecasound-iam
+ https://sourceforge.net/p/ecasound/mailman/
+ http://search.cpan.org/perldoc?Audio::Ecasound
+ http://www.eca.cx/ecasound/
+ http://www.pjb.com.au/comp/lua/ecasound.html
+ https://luarocks.org/modules/peterbillam
+ https://luarocks.org/
  http://www.pjb.com.au/</code></pre>
 
 

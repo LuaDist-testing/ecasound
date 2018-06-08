@@ -1,16 +1,16 @@
 -- This file was automatically generated for the LuaDist project.
 
 package = "ecasound"
-version = "0.1-0"
+version = "0.2-0"
 -- LuaDist source
 source = {
-  tag = "0.1-0",
+  tag = "0.2-0",
   url = "git://github.com/LuaDist-testing/ecasound.git"
 }
 -- Original source
 -- source = {
---    url = "http://www.pjb.com.au/comp/lua/ecasound-0.1.tar.gz",
---    md5 = "f5f233f82d93b6f7e11dad8ada49fca9"
+--    url = "http://www.pjb.com.au/comp/lua/ecasound-0.2.tar.gz",
+--    md5 = "6ff5031ba5e2970a735f15251e17f5c4"
 -- }
 description = {
    summary = "Provides access to the ecasound interactive mode",

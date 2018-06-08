@@ -10,87 +10,112 @@
 
 #include <lua.h>
 #include <lauxlib.h>
+#include <stdlib.h>
 /* #include <string.h>  strlen() & friends, including strerror */
 /* #include <unistd.h>  isatty() */
-
 /* --------------- from man ecasound-iam -------------------- */
 #include <libecasoundc/ecasoundc.h>
 #include <stdio.h>
 /* see ~/lua/ecasound-0.0/cpan/Ecasound.xs */
 /* lint with     splint C-ecasound.c -I/usr/local/include   */
 
+/* Constructing and destructing */
 static int c_eci_init(lua_State *L) {
-	int is_on = lua_toboolean(L, 1);
-	is_on +=1;
+	eci_init();
+	if ( eci_error() > 0 ) {  /* it returns int, not boolean */
+		const char *err = eci_last_error();
+		fprintf( stderr, "init Error: %s\n", err );
+		exit(EXIT_FAILURE);
+	}
+	return 1;
+}
+static int c_eci_ready(lua_State *L) {
+	const int i = eci_ready();
+	lua_pushinteger(L, i);
 	return 1;
 }
 static int c_eci_cleanup(lua_State *L) {
-	int is_on = lua_toboolean(L, 1);
-	is_on +=1;
+	eci_cleanup();
+	lua_pushnil(L);
 	return 1;
 }
-static int c_eci_command(lua_State *L) {
-	size_t * len;
-	const char *cmd = lua_tolstring(L, 1, len);
-	eci_command(cmd);  /* if error, it should return a string */
-	/* lua_pushstring(L, eci_last_string(cmd)); */
-	return 0;
+
+/* The Do-Everything Workhorse function */
+static int c_eci(lua_State *L) {
+	size_t len;
+	const char *cmd  = lua_tolstring(L, 1, &len);  /* Parse Error ? */
+	if (lua_gettop(L) == 1)  {
+		eci_command(cmd);
+	} else {
+		double num = lua_tonumber(L, 2);
+		eci_command_float_arg(cmd, num);
+	}
+	const char *type = eci_last_type();
+	char type1 = type[0];
+	switch (type1) {  /* see "man ecasound-iam" for these types */
+	case 's':
+		lua_pushstring(L, eci_last_string());
+		return 1;
+	case 'S':
+		/* you cannot declare variables as the first line inside of a switch
+		statement's case statement! (which, at it's heart, is just a label);
+		You can declare them _inside_ the case statement, they just cannot
+		directly follow the label. */
+		lua_newtable(L);  /* the result table is now top of stack */
+		int n = eci_last_string_list_count();
+		fprintf( stderr, "eci_last_string_list_count: %d\n", n );
+		int i = 1;
+		while (i<=n) {
+			lua_pushnumber(L, i);
+			lua_pushstring(L, eci_last_string_list_item(i));
+			lua_settable(L, -3);  /* don't understand this */
+			i = i+1;
+		}
+		return 1;  /* the table is already on top */
+	case 'i':
+	case 'l':
+		lua_pushinteger(L, eci_last_integer());
+		return 1;
+	case 'f':
+		lua_pushnumber(L, eci_last_float());
+		return 1;
+	case 'e':
+		lua_pushnil(L);
+		lua_pushstring(L, eci_last_error());
+		return 2;
+	case '-':   /* must not return nil, to avoid looking like an error */
+		lua_pushstring(L, "");
+		return 1;
+	default:
+		fprintf( stderr, "eci_last_type: %s\n", type );
+		return 0;
+	}
 }
 static int c_eci_command_float_arg(lua_State *L) {
 	int is_on = lua_toboolean(L, 1);
 	is_on +=1;
 	return 1;
 }
-static int c_eci_last_float(lua_State *L) {
+
+/* Events */
+static int c_eci_events_available(lua_State *L) {
+	int i_available = eci_events_available();
+	lua_pushinteger(L, i_available);
+	return 1;
+}
+static int c_eci_next_event(lua_State *L) {
+	lua_pushnil(L);
+	return 1;
+}
+static int c_eci_current_event(lua_State *L) {
+	const char * str = eci_current_event();
+	lua_pushstring(L, str);
+	return 1;
+}
+
+static int c_eci_error(lua_State *L) { /* still needed ? */
 	int is_on = lua_toboolean(L, 1);
 	is_on +=1;
-	return 1;
-}
-static int c_eci_last_integer(lua_State *L) {
-	int is_on = lua_toboolean(L, 1);
-	is_on +=1;
-	return 1;
-}
-static int c_eci_last_long_integer(lua_State *L) {
-	int is_on = lua_toboolean(L, 1);
-	is_on +=1;
-	return 1;
-}
-static int c_eci_last_string(lua_State *L) {
-	int is_on = lua_toboolean(L, 1); is_on +=1;
-	lua_pushstring(L, eci_last_string());
-	return 1;
-}
-static int c_eci_last_string_list_count(lua_State *L) {
-	int is_on = lua_toboolean(L, 1);
-	is_on +=1;
-	return 1;
-}
-static int c_eci_last_string_list_item(lua_State *L) {
-	int is_on = lua_toboolean(L, 1);
-	is_on +=1;
-	return 1;
-}
-static int c_eci_last_type(lua_State *L) {
-	int is_on = lua_toboolean(L, 1);
-	is_on +=1;
-	return 1;
-}
-static int c_eci_error(lua_State *L) {
-	int is_on = lua_toboolean(L, 1);
-	is_on +=1;
-	return 1;
-}
-static int c_cs_status(lua_State *L) {
-	int is_on = lua_toboolean(L, 1);  is_on +=1;
-	eci_command("cs-status");  /* ' does not work, see K&R p.17 */
-	lua_pushstring(L, eci_last_string());
-	return 1;
-}
-static int c_engine_status(lua_State *L) {
-	int is_on = lua_toboolean(L, 1);  is_on +=1;
-	eci_command("engine-status");
-	lua_pushstring(L, eci_last_string());    /* no; must be different */
 	return 1;
 }
 
@@ -106,19 +131,14 @@ static const struct constant constants[] = {
 
 static const luaL_Reg prv[] = {  /* private functions */
     {"eci_init",                   c_eci_init},
+    {"eci_ready",                  c_eci_ready},
     {"eci_cleanup",                c_eci_cleanup},
-    {"eci_command",                c_eci_command},
+    {"eci",                        c_eci},
     {"eci_command_float_arg",      c_eci_command_float_arg},
-    {"eci_last_float",             c_eci_last_float},
-    {"eci_last_integer",           c_eci_last_integer},
-    {"eci_last_long_integer",      c_eci_last_long_integer},
-    {"eci_last_string",            c_eci_last_string},
-    {"eci_last_string_list_count", c_eci_last_string_list_count},
-    {"eci_last_string_list_item",  c_eci_last_string_list_item},
-    {"eci_last_type",              c_eci_last_type},
+    {"eci_events_available",       c_eci_events_available},
+    {"eci_next_event",             c_eci_next_event},
+    {"eci_current_event",          c_eci_current_event},
     {"eci_error",                  c_eci_error},
-    {"cs_status",                  c_cs_status},
-    {"engine_status",              c_engine_status},
     {NULL, NULL}
 };
 
